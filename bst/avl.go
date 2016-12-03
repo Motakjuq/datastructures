@@ -1,21 +1,64 @@
-package bst
+package main
 
-// AvlNode contain the necessary structure for the tree creation
-type AvlNode struct {
-	value  int
-	height int
-	left   *AvlNode
-	right  *AvlNode
+// Entry interface defines the comparation method, 1 if greate than entry, -1 if is lower and 0 if it's equal
+type Entry interface {
+	Compare(entry Entry) int
 }
 
-func (n *AvlNode) getHeight() int {
+// avlNode contain the necessary structure for the tree creation
+type avlNode struct {
+	entry  Entry
+	height int
+	left   *avlNode
+	right  *avlNode
+}
+
+// BST interface
+type BST interface {
+	Insert(entry Entry)
+	Search(entry Entry) Entry
+	Delete(entry Entry)
+}
+
+// NewAVL create a new empty AVL tree
+func NewAVL() BST {
+	return &avlTree{}
+}
+
+type avlTree struct {
+	root *avlNode
+}
+
+// Insert an Entry into the tree, if the Entry already exists, it's override
+func (avl *avlTree) Insert(entry Entry) {
+	avl.root = avl.root.insert(entry)
+}
+
+// Search func
+func (avl *avlTree) Search(entry Entry) Entry {
+	return avl.root.search(entry)
+}
+
+// Delete the specified Entry
+func (avl *avlTree) Delete(entry Entry) {
+	avl.root = avl.root.delete(entry)
+}
+
+//  _     _____  _    _   _      _____ _   _ _____ _      ______ _   _ _   _ _____
+// | |   |  _  || |  | | | |    |  ___| | | |  ___| |     |  ___| | | | \ | /  __ \
+// | |   | | | || |  | | | |    | |__ | | | | |__ | |     | |_  | | | |  \| | /  \/
+// | |   | | | || |/\| | | |    |  __|| | | |  __|| |     |  _| | | | | . ` | |
+// | |___\ \_/ /\  /\  / | |____| |___\ \_/ / |___| |____ | |   | |_| | |\  | \__/\
+// \_____/\___/  \/  \/  \_____/\____/ \___/\____/\_____/ \_|    \___/\_| \_/\____/
+
+func (n *avlNode) getHeight() int {
 	if n == nil {
 		return 0
 	}
 	return n.height
 }
 
-func (n *AvlNode) updateHeight() {
+func (n *avlNode) updateHeight() {
 	if n.left.getHeight() > n.right.getHeight() {
 		n.height = n.left.getHeight() + 1
 	} else {
@@ -23,11 +66,11 @@ func (n *AvlNode) updateHeight() {
 	}
 }
 
-func (n *AvlNode) balanceFactor() int {
+func (n *avlNode) balanceFactor() int {
 	return -1*n.left.getHeight() + n.right.getHeight()
 }
 
-func (n *AvlNode) leftRotation() *AvlNode {
+func (n *avlNode) leftRotation() *avlNode {
 	parent := n.right
 	n.right = parent.left
 	parent.left = n
@@ -37,7 +80,7 @@ func (n *AvlNode) leftRotation() *AvlNode {
 	return parent
 }
 
-func (n *AvlNode) rightRotation() *AvlNode {
+func (n *avlNode) rightRotation() *avlNode {
 	parent := n.left
 	n.left = parent.right
 	parent.right = n
@@ -47,19 +90,19 @@ func (n *AvlNode) rightRotation() *AvlNode {
 	return parent
 }
 
-func (n *AvlNode) leftRightRotation() *AvlNode {
+func (n *avlNode) leftRightRotation() *avlNode {
 	n.left = n.left.leftRotation()
 	parent := n.rightRotation()
 	return parent
 }
 
-func (n *AvlNode) rightLeftRotation() *AvlNode {
+func (n *avlNode) rightLeftRotation() *avlNode {
 	n.right = n.right.rightRotation()
 	parent := n.leftRotation()
 	return parent
 }
 
-func (n *AvlNode) rebalance() *AvlNode {
+func (n *avlNode) rebalance() *avlNode {
 	n.updateHeight()
 	balance := n.balanceFactor()
 	if balance == -2 { // heavy left
@@ -79,45 +122,44 @@ func (n *AvlNode) rebalance() *AvlNode {
 	return n
 }
 
-// Insert func
-func (n *AvlNode) Insert(data int) *AvlNode {
+// insert func
+func (n *avlNode) insert(data Entry) *avlNode {
 	if n == nil {
-		return &AvlNode{value: data, height: 1}
+		return &avlNode{entry: data, height: 1}
 	}
 
-	if data < n.value { // left insert
-		n.left = n.left.Insert(data)
-	} else if n.value < data { // right insert
-		n.right = n.right.Insert(data)
+	if data.Compare(n.entry) < 0 { // left insert
+		n.left = n.left.insert(data)
+	} else if data.Compare(n.entry) > 0 { // right insert
+		n.right = n.right.insert(data)
 	} else { // equals replace
-		n.value = data
+		n.entry = data
 		return n
 	}
 
 	return n.rebalance()
 }
 
-// Contains func
-func (n *AvlNode) Contains(data int) bool {
+// search returns the defined Entry or nil otherwise
+func (n *avlNode) search(data Entry) Entry {
 	if n != nil {
 		node := n
 		for node != nil {
-			if node.value == data {
-				// break
-				return true
+			if node.entry.Compare(data) == 0 {
+				return node.entry
 			}
-			if data < node.value {
+			if data.Compare(node.entry) < 0 {
 				node = node.left
 			} else {
 				node = node.right
 			}
 		}
 	}
-	return false
+	return nil
 }
 
 // return the new root of the tree and the removed node
-func (n *AvlNode) extractDeepLeftNode() (root, node *AvlNode) {
+func (n *avlNode) extractDeepLeftNode() (root, node *avlNode) {
 	if n != nil {
 		if n.left == nil {
 			root := n.right
@@ -126,7 +168,7 @@ func (n *AvlNode) extractDeepLeftNode() (root, node *AvlNode) {
 		}
 		parent := n
 		node = n.left
-		list := make([]*AvlNode, 0, n.height)
+		list := make([]*avlNode, 0, n.height)
 		list = append(list, parent)
 		i := 1
 		for node.left != nil {
@@ -150,13 +192,14 @@ func (n *AvlNode) extractDeepLeftNode() (root, node *AvlNode) {
 	return nil, nil
 }
 
-// Delete func
-func (n *AvlNode) Delete(data int) *AvlNode {
+// iterative delete
+func (n *avlNode) delete(data Entry) *avlNode {
 	if n != nil {
-		list := make([]*AvlNode, 0, n.height)
+		list := make([]*avlNode, 0, n.height)
 		node := n
 		for node != nil {
-			if node.value == data {
+			// if node.entry == data {
+			if node.entry.Compare(data) == 0 {
 				if node.left != nil && node.right != nil { // find the replace for the root node
 					rightNode, replace := node.right.extractDeepLeftNode()
 					replace.left = node.left
@@ -169,7 +212,7 @@ func (n *AvlNode) Delete(data int) *AvlNode {
 						return nil
 					}
 					parent := list[len(list)-1]
-					if node.value < parent.value {
+					if node.entry.Compare(parent.entry) < 0 {
 						parent.left = nil
 					} else {
 						parent.right = nil
@@ -185,7 +228,7 @@ func (n *AvlNode) Delete(data int) *AvlNode {
 			}
 
 			list = append(list, node)
-			if data < node.value {
+			if data.Compare(node.entry) < 0 {
 				node = node.left
 			} else {
 				node = node.right
@@ -200,7 +243,7 @@ func (n *AvlNode) Delete(data int) *AvlNode {
 			for i := len(list) - 1; i >= 0; i-- {
 				list[i] = list[i].rebalance()
 				if i > 0 {
-					if list[i].value < list[i-1].value {
+					if list[i].entry.Compare(list[i-1].entry) < 0 {
 						list[i-1].left = list[i]
 					} else {
 						list[i-1].right = list[i]
