@@ -1,4 +1,4 @@
-package main
+package bst
 
 // Entry interface defines the comparation method, 1 if greate than entry, -1 if is lower and 0 if it's equal
 type Entry interface {
@@ -31,7 +31,7 @@ type avlTree struct {
 
 // Insert an Entry into the tree, if the Entry already exists, it's override
 func (avl *avlTree) Insert(entry Entry) {
-	avl.root = avl.root.insert(entry)
+	avl.root, _ = avl.root.insert(entry)
 }
 
 // Search func
@@ -92,52 +92,119 @@ func (n *avlNode) rightRotation() *avlNode {
 
 func (n *avlNode) leftRightRotation() *avlNode {
 	n.left = n.left.leftRotation()
-	parent := n.rightRotation()
-	return parent
+	return n.rightRotation()
 }
 
 func (n *avlNode) rightLeftRotation() *avlNode {
 	n.right = n.right.rightRotation()
-	parent := n.leftRotation()
-	return parent
+	return n.leftRotation()
 }
 
-func (n *avlNode) rebalance() *avlNode {
+func (n *avlNode) rebalance() (root *avlNode, updated bool) {
+	height := n.height
 	n.updateHeight()
+	if height != n.height {
+		updated = true
+	}
 	balance := n.balanceFactor()
 	if balance == -2 { // heavy left
 		if n.left.balanceFactor() > 0 {
-			n = n.leftRightRotation()
-		} else {
-			n = n.rightRotation()
+			return n.leftRightRotation(), true
 		}
+		return n.rightRotation(), true
 	}
 	if balance == 2 {
 		if n.right.balanceFactor() < 0 {
-			n = n.rightLeftRotation()
-		} else {
-			n = n.leftRotation()
+			return n.rightLeftRotation(), true
 		}
+		return n.leftRotation(), true
 	}
-	return n
+	return n, updated
 }
 
 // insert func
-func (n *avlNode) insert(data Entry) *avlNode {
+func (n *avlNode) insert(data Entry) (*avlNode, bool) {
+	if n == nil {
+		return &avlNode{entry: data, height: 1}, true
+	}
+	var updated bool
+	compareResult := data.Compare(n.entry)
+	if compareResult < 0 { // left insert
+		n.left, updated = n.left.insert(data)
+	} else if compareResult > 0 { // right insert
+		n.right, updated = n.right.insert(data)
+	} else { // equals replace
+		n.entry = data
+		return n, updated
+	}
+	if updated {
+		return n.rebalance()
+	}
+	return n, updated
+}
+
+// insert func
+func (n *avlNode) insertIter(data Entry) *avlNode {
 	if n == nil {
 		return &avlNode{entry: data, height: 1}
 	}
 
-	if data.Compare(n.entry) < 0 { // left insert
-		n.left = n.left.insert(data)
-	} else if data.Compare(n.entry) > 0 { // right insert
-		n.right = n.right.insert(data)
+	var node *avlNode
+	compResult := data.Compare(n.entry)
+	if compResult < 0 { // left insert
+		node = n.left
+	} else if compResult > 0 { // right insert
+		node = n.right
 	} else { // equals replace
 		n.entry = data
 		return n
 	}
 
-	return n.rebalance()
+	list := make([]*avlNode, 0, n.height)
+	list = append(list, n)
+	for node != nil {
+		list = append(list, node)
+		compResult = data.Compare(node.entry)
+		if compResult < 0 { // left insert
+			node = node.left
+		} else if compResult > 0 { // right insert
+			node = node.right
+		} else { // equals replace
+			node.entry = data
+			return node
+		}
+		if node == nil {
+			break
+		}
+	}
+
+	if node == nil {
+		node = &avlNode{entry: data, height: 1}
+		compResult := data.Compare(list[len(list)-1].entry)
+		if compResult < 0 { // left insert
+			list[len(list)-1].left = node
+		} else if compResult > 0 { // right insert
+			list[len(list)-1].right = node
+		}
+	}
+
+	//var updated bool
+	size := len(list) - 2
+	var updated bool
+	for i := len(list) - 2; i >= 0; i-- {
+		list[i], updated = list[i].rebalance()
+		if i > 0 && updated {
+			if list[i].entry.Compare(list[i-1].entry) < 0 {
+				list[i-1].left = list[i]
+			} else {
+				list[i-1].right = list[i]
+			}
+		}
+		if !updated && i < size {
+			break
+		}
+	}
+	return list[0]
 }
 
 // search returns the defined Entry or nil otherwise
@@ -182,7 +249,7 @@ func (n *avlNode) extractDeepLeftNode() (root, node *avlNode) {
 		node.right = nil
 		for i > 0 {
 			i--
-			list[i] = list[i].rebalance()
+			list[i], _ = list[i].rebalance()
 			if i >= 1 {
 				list[i-1].left = list[i]
 			}
@@ -241,7 +308,7 @@ func (n *avlNode) delete(data Entry) *avlNode {
 
 		if len(list) > 0 {
 			for i := len(list) - 1; i >= 0; i-- {
-				list[i] = list[i].rebalance()
+				list[i], _ = list[i].rebalance()
 				if i > 0 {
 					if list[i].entry.Compare(list[i-1].entry) < 0 {
 						list[i-1].left = list[i]
