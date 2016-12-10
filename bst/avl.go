@@ -1,23 +1,11 @@
 package bst
 
-// Entry interface defines the comparation method, 1 if greate than entry, -1 if is lower and 0 if it's equal
-type Entry interface {
-	Compare(entry Entry) int
-}
-
 // avlNode contain the necessary structure for the tree creation
 type avlNode struct {
 	entry  Entry
 	height int
 	left   *avlNode
 	right  *avlNode
-}
-
-// BST interface
-type BST interface {
-	Insert(entry Entry)
-	Search(entry Entry) Entry
-	Delete(entry Entry)
 }
 
 // NewAVL create a new empty AVL tree
@@ -67,7 +55,8 @@ func (n *avlNode) updateHeight() {
 }
 
 func (n *avlNode) balanceFactor() int {
-	return -1*n.left.getHeight() + n.right.getHeight()
+	//return -1*n.left.getHeight() + n.right.getHeight()
+	return n.right.getHeight() - n.left.getHeight()
 }
 
 func (n *avlNode) leftRotation() *avlNode {
@@ -100,26 +89,28 @@ func (n *avlNode) rightLeftRotation() *avlNode {
 	return n.leftRotation()
 }
 
-func (n *avlNode) rebalance() (root *avlNode, updated bool) {
+func (n *avlNode) rebalance() (*avlNode, bool) {
 	height := n.height
 	n.updateHeight()
-	if height != n.height {
-		updated = true
-	}
-	balance := n.balanceFactor()
-	if balance == -2 { // heavy left
+	// var updated bool
+	// if height != n.height {
+	// 	updated = true
+	// }
+
+	//balance := n.balanceFactor()
+	if n.balanceFactor() == -2 { // heavy left
 		if n.left.balanceFactor() > 0 {
 			return n.leftRightRotation(), true
 		}
 		return n.rightRotation(), true
 	}
-	if balance == 2 {
+	if n.balanceFactor() == 2 {
 		if n.right.balanceFactor() < 0 {
 			return n.rightLeftRotation(), true
 		}
 		return n.leftRotation(), true
 	}
-	return n, updated
+	return n, height != n.height
 }
 
 // insert func
